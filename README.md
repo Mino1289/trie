@@ -5,6 +5,7 @@
 ```console
 $ ./build.sh
 $ xdg-open trie.svg
+$ ./trie complete Ap
 ```
 
 ## References
