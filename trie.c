@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "fruits.h"
 
@@ -51,15 +53,40 @@ void dump_dot(Node *root)
     }
 }
 
-int main(void)
+void usage(FILE *sink)
 {
-    Node *root = alloc_node();
-    for (size_t i = 0; i < fruits_count; ++i) {
-        insert_text(root, fruits[i]);
+    fprintf(sink, "Usage: ./trie <SUBCOMMAND>\n");
+    fprintf(sink, "SUBCOMMANDS:\n");
+    fprintf(sink, "    dot                Dump the Trie into a Graphviz dot file.\n");
+    fprintf(sink, "    complete <prefix>  Suggest prefix autocompletion based on the Trie.\n");
+}
+
+int main(int argc, char **argv)
+{
+    if (argc < 2) {
+        usage(stderr);
+        fprintf(stderr, "ERROR: no subcommand is provided\n");
+        exit(1);
     }
-    printf("digraph Trie {\n");
-    printf("    Node_%zu [label=root]\n", root - node_pool);
-    dump_dot(root);
-    printf("}\n");
+
+    const char *subcommand = argv[1];
+
+    if (strcmp(subcommand, "dot") == 0) {
+        Node *root = alloc_node();
+        for (size_t i = 0; i < fruits_count; ++i) {
+            insert_text(root, fruits[i]);
+        }
+        printf("digraph Trie {\n");
+        printf("    Node_%zu [label=root]\n", root - node_pool);
+        dump_dot(root);
+        printf("}\n");
+    } else if (strcmp(subcommand, "complete") == 0) {
+        assert(0 && "TODO: complete subcommand is not implemented yet\n");
+    } else {
+        usage(stderr);
+        fprintf(stderr, "ERROR: unknown subcommand `%s`\n", subcommand);
+        exit(1);
+    }
+
     return 0;
 }
