@@ -97,16 +97,18 @@ Node *find_prefix(Node *root, const char *prefix)
 
 void print_autocompletion(FILE *sink, Node *root)
 {
-    if (root->end) {
-        fwrite(ac_buffer, ac_buffer_sz, 1, sink);
-        fputc('\n', sink);
-    }
+    if (root) {
+        if (root->end) {
+            fwrite(ac_buffer, ac_buffer_sz, 1, sink);
+            fputc('\n', sink);
+        }
 
-    for (size_t i = 0; i < ARRAY_LEN(root->children); ++i) {
-        if (root->children[i] != NULL) {
-            ac_buffer_push((char) i);
-            print_autocompletion(sink, root->children[i]);
-            ac_buffer_pop();
+        for (size_t i = 0; i < ARRAY_LEN(root->children); ++i) {
+            if (root->children[i] != NULL) {
+                ac_buffer_push((char) i);
+                print_autocompletion(sink, root->children[i]);
+                ac_buffer_pop();
+            }
         }
     }
 }
@@ -142,7 +144,12 @@ int main(int argc, char **argv)
 
         const char *prefix = *argv++;
         Node *subtree = find_prefix(root, prefix);
-        print_autocompletion(stdout, subtree);
+        if (subtree) {
+            print_autocompletion(stdout, subtree);
+        } else {
+            fprintf(stderr, "No autocomplete suggestions found\n");
+            exit(1);
+        }
     } else {
         usage(stderr, program);
         fprintf(stderr, "ERROR: unknown subcommand `%s`\n", subcommand);
