@@ -29,6 +29,8 @@ Node *alloc_node(void)
     return &node_pool[node_pool_count++];
 }
 
+// TODO: use loops instead of iterative recursion
+
 void insert_text(Node *root, const char *text)
 {
     assert(root != NULL);
