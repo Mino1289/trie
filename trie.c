@@ -12,9 +12,13 @@ typedef struct Node Node;
 
 struct Node {
     bool end;
+    // TODO: explore the idea of using dynamically growing hash table for Node.children
+    // TODO: explore the idea of using indices within the `node_pool` array instead of huge word size pointers.
+    // on x86_64 they are literally 8 bytes!
     Node *children[256];
 };
 
+// TODO: serialize/deserialize the tree
 #define NODE_POOL_CAP 1024
 Node node_pool[NODE_POOL_CAP] = {0};
 size_t node_pool_count = 0;
@@ -126,11 +130,15 @@ int main(int argc, char **argv)
     const char *subcommand = *argv++;
 
     Node *root = alloc_node();
+    // TODO: unhardcode "training" data for the tree
+    // Provide via a file or something
     for (size_t i = 0; i < fruits_count; ++i) {
         insert_text(root, fruits[i]);
     }
 
     if (strcmp(subcommand, "dot") == 0) {
+        // TODO: make `dot` call graphviz as an external process
+        // TODO: `dot` should support [prefix] argument to inspect a specific prefix subtree
         printf("digraph Trie {\n");
         printf("    Node_%zu [label=root]\n", root - node_pool);
         dump_dot(root);
@@ -155,6 +163,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "ERROR: unknown subcommand `%s`\n", subcommand);
         exit(1);
     }
+
+    // TODO: interactive ncurses based autocompletion demo that utilizes the prefix tree
 
     return 0;
 }
