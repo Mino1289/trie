@@ -29,7 +29,7 @@ Node *alloc_node(void)
     return &node_pool[node_pool_count++];
 }
 
-// TODO: use loops instead of iterative recursion
+// TODOOO: use loops instead of iterative recursion
 
 void insert_text(Node *root, const char *text)
 {
@@ -49,8 +49,8 @@ void insert_text(Node *root, const char *text)
     insert_text(root->children[index], text + 1);
 }
 
-// TODO: you can actually dump the graphviz data by iterating linearly through the `node_pool` array
-// TODO: prettier style for graphviz output
+// TODOO: you can actually dump the graphviz data by iterating linearly through the `node_pool` array
+// TODOO: prettier style for graphviz output
 // With compeling colors and shapes
 void dump_dot(Node *root)
 {
@@ -141,8 +141,8 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(subcommand, "dot") == 0) {
-        // TODO: make `dot` call graphviz as an external process
-        // TODO: `dot` should support [prefix] argument to inspect a specific prefix subtree
+        // TODOOO: make `dot` call graphviz as an external process
+        // TODOOO: `dot` should support [prefix] argument to inspect a specific prefix subtree
         printf("digraph Trie {\n");
         printf("    Node_%zu [label=root]\n", root - node_pool);
         dump_dot(root);
