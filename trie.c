@@ -50,6 +50,8 @@ void insert_text(Node *root, const char *text)
 }
 
 // TODO: you can actually dump the graphviz data by iterating linearly through the `node_pool` array
+// TODO: prettier style for graphviz output
+// With compeling colors and shapes
 void dump_dot(Node *root)
 {
     size_t index = root - node_pool;
