@@ -49,6 +49,7 @@ void insert_text(Node *root, const char *text)
     insert_text(root->children[index], text + 1);
 }
 
+// TODO: you can actually dump the graphviz data by iterating linearly through the `node_pool` array
 void dump_dot(Node *root)
 {
     size_t index = root - node_pool;
@@ -99,7 +100,6 @@ Node *find_prefix(Node *root, const char *prefix)
     ac_buffer_push(*prefix);
     return find_prefix(root->children[(size_t) *prefix], prefix + 1);
 }
-
 
 void print_autocompletion(FILE *sink, Node *root)
 {
