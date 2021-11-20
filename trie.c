@@ -3,6 +3,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <errno.h>
+#include <ctype.h>
+
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "fruits.h"
 
@@ -52,15 +58,15 @@ void insert_text(Node *root, const char *text)
 // TODOO: you can actually dump the graphviz data by iterating linearly through the `node_pool` array
 // TODOO: prettier style for graphviz output
 // With compeling colors and shapes
-void dump_dot(Node *root)
+void dump_dot(FILE *sink, Node *root)
 {
     size_t index = root - node_pool;
     for (size_t i = 0; i < ARRAY_LEN(root->children); ++i) {
         if (root->children[i] != NULL) {
             size_t child_index = root->children[i] - node_pool;
-            printf("    Node_%zu [label=\"%c\"]\n", child_index, (char) i);
-            printf("    Node_%zu -> Node_%zu [label=\"%c\"]\n", index, child_index, (char) i);
-            dump_dot(root->children[i]);
+            fprintf(sink, "    Node_%zu [label=\"%c\"]\n", child_index, (char) i);
+            fprintf(sink, "    Node_%zu -> Node_%zu [label=\"%c\"]\n", index, child_index, (char) i);
+            dump_dot(sink, root->children[i]);
         }
     }
 }
@@ -121,6 +127,125 @@ void print_autocompletion(FILE *sink, Node *root)
     }
 }
 
+void cmd(char **argv)
+{
+    pid_t child = fork();
+
+    if (child == 0) {
+        if (execvp(argv[0], argv) < 0) {
+            fprintf(stderr, "ERROR: could not execute the child: %s\n",
+                    strerror(errno));
+            exit(1);
+        }
+    } else if (child > 0) {
+        int wstatus;
+        if (wait(&wstatus) < 0) {
+            fprintf(stderr, "ERROR: could not wait for the forked child: %s\n",
+                    strerror(errno));
+            exit(1);
+        }
+    } else {
+        fprintf(stderr, "ERROR: could not fork a child: %s\n",
+                strerror(errno));
+        exit(1);
+    }
+}
+
+bool is_safe(char ch)
+{
+    return strchr("@%+=:,./-_", ch) != NULL || isalnum(ch);
+}
+
+bool is_safe_str(const char *str)
+{
+    for (; *str; str++) {
+        if (!is_safe(*str)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+#define TMP_CAP (8 * 1024)
+char tmp[TMP_CAP] = {0};
+size_t tmp_size = 0;
+
+char *tmp_end(void)
+{
+    return tmp + tmp_size;
+}
+
+char *tmp_alloc(size_t size)
+{
+    assert(tmp_size + size <= TMP_CAP);
+    char *result = tmp_end();
+    tmp_size += size;
+    return result;
+}
+
+char *tmp_append_sized(const char *buffer, size_t buffer_sz)
+{
+    char *result = tmp_alloc(buffer_sz);
+    return memcpy(result, buffer, buffer_sz);
+}
+
+char *tmp_append_cstr(const char *cstr)
+{
+    return tmp_append_sized(cstr, strlen(cstr));
+}
+
+void tmp_clean()
+{
+    tmp_size = 0;
+}
+
+void tmp_rewind(char *end)
+{
+    tmp_size = end - tmp;
+}
+
+const char *shell_escape(const char *str)
+{
+    if (str == NULL) {
+        return "''";
+    }
+
+    if (is_safe_str(str)) {
+        return str;
+    }
+
+    char *result = tmp_end();
+
+    tmp_append_cstr("'");
+    while (str) {
+        char *end = strchr(str, '\'');
+        if (end) {
+            tmp_append_sized(str, end - str);
+            tmp_append_cstr("'\"'\"'");
+            str = end + 1;
+        } else {
+            tmp_append_cstr(str);
+            str = NULL;
+        }
+    }
+    tmp_append_cstr("'");
+    tmp_append_sized("", 1);
+
+    return result;
+}
+
+void echo_cmd(char **argv)
+{
+    char *end = tmp_end();
+    printf("[CMD]");
+    for (; *argv != NULL; argv++) {
+        printf(" ");
+        printf("%s", shell_escape(*argv));
+    }
+    printf("\n");
+    tmp_rewind(end);
+}
+
 int main(int argc, char **argv)
 {
     const char *program = *argv++;
@@ -141,12 +266,35 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(subcommand, "dot") == 0) {
-        // TODOOOO: make `dot` call graphviz as an external process
+        char *output_filepath = "trie.dot";
+
+        printf("[INFO] Generating %s\n", output_filepath);
+
+        FILE *f = fopen(output_filepath, "w");
+        if (f == NULL) {
+            fprintf(stderr, "ERROR: could not open file `%s`: %s",
+                    output_filepath, strerror(errno));
+            exit(1);
+        }
+
         // TODOOO: `dot` should support [prefix] argument to inspect a specific prefix subtree
-        printf("digraph Trie {\n");
-        printf("    Node_%zu [label=root]\n", root - node_pool);
-        dump_dot(root);
-        printf("}\n");
+        fprintf(f, "digraph Trie {\n");
+        fprintf(f, "    Node_%zu [label=root]\n", root - node_pool);
+        dump_dot(f, root);
+        fprintf(f, "}\n");
+
+        fclose(f);
+
+        char *dot_argv[] = {
+            "dot",
+            "-Tsvg",
+            output_filepath,
+            "-O",
+            NULL,
+        };
+
+        echo_cmd(dot_argv);
+        cmd(dot_argv);
     } else if (strcmp(subcommand, "complete") == 0) {
         if (*argv == NULL) {
             usage(stderr, program);
