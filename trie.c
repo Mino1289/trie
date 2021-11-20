@@ -141,7 +141,7 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(subcommand, "dot") == 0) {
-        // TODOOO: make `dot` call graphviz as an external process
+        // TODOOOO: make `dot` call graphviz as an external process
         // TODOOO: `dot` should support [prefix] argument to inspect a specific prefix subtree
         printf("digraph Trie {\n");
         printf("    Node_%zu [label=root]\n", root - node_pool);
