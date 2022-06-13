@@ -10,7 +10,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "fruits.h"
+// #include "mots.h"
 
 #define ARRAY_LEN(xs) (sizeof(xs) / sizeof((xs)[0]))
 
@@ -25,12 +25,11 @@ struct Node {
 };
 
 // TODO: serialize/deserialize the tree
-#define NODE_POOL_CAP 1024
+#define NODE_POOL_CAP 524288
 Node node_pool[NODE_POOL_CAP] = {0};
 size_t node_pool_count = 0;
 
-Node *alloc_node(void)
-{
+Node *alloc_node(void) {
     assert(node_pool_count < NODE_POOL_CAP);
     return &node_pool[node_pool_count++];
 }
@@ -76,55 +75,6 @@ void usage(FILE *sink, const char *program)
     fprintf(sink, "Usage: %s <SUBCOMMAND>\n", program);
     fprintf(sink, "SUBCOMMANDS:\n");
     fprintf(sink, "    dot                Dump the Trie into a Graphviz dot file.\n");
-    fprintf(sink, "    complete <prefix>  Suggest prefix autocompletion based on the Trie.\n");
-}
-
-#define AC_BUFFER_CAP 1024
-char ac_buffer[AC_BUFFER_CAP];
-size_t ac_buffer_sz = 0;
-
-void ac_buffer_push(char ch)
-{
-    assert(ac_buffer_sz < AC_BUFFER_CAP);
-    ac_buffer[ac_buffer_sz++] = ch;
-}
-
-void ac_buffer_pop(void)
-{
-    assert(ac_buffer_sz > 0);
-    ac_buffer_sz--;
-}
-
-Node *find_prefix(Node *root, const char *prefix)
-{
-    if (prefix == NULL || *prefix == '\0') {
-        return root;
-    }
-
-    if (root == NULL) {
-        return NULL;
-    }
-
-    ac_buffer_push(*prefix);
-    return find_prefix(root->children[(size_t) *prefix], prefix + 1);
-}
-
-void print_autocompletion(FILE *sink, Node *root)
-{
-    if (root) {
-        if (root->end) {
-            fwrite(ac_buffer, ac_buffer_sz, 1, sink);
-            fputc('\n', sink);
-        }
-
-        for (size_t i = 0; i < ARRAY_LEN(root->children); ++i) {
-            if (root->children[i] != NULL) {
-                ac_buffer_push((char) i);
-                print_autocompletion(sink, root->children[i]);
-                ac_buffer_pop();
-            }
-        }
-    }
 }
 
 void cmd(char **argv)
@@ -261,8 +211,16 @@ int main(int argc, char **argv)
     Node *root = alloc_node();
     // TODO: unhardcode "training" data for the tree
     // Provide via a file or something
-    for (size_t i = 0; i < fruits_count; ++i) {
-        insert_text(root, fruits[i]);
+    FILE* file = fopen("dico.txt", "r");
+    // char* mots = malloc(sizeof(char*));
+    int len;
+    char buffer[25];
+    while (!feof(file)) {
+        fscanf(file, "%s\t%d", buffer, &len);
+        insert_text(root, buffer);
+        // mots[i] = malloc(sizeof(char) * len);
+        // strncpy(mots[i], buffer, len);
+        // mots = realloc(mots, sizeof(char*) * (i + 1));
     }
 
     if (strcmp(subcommand, "dot") == 0) {
@@ -285,7 +243,7 @@ int main(int argc, char **argv)
 
         fclose(f);
 
-        char *dot_argv[] = {
+                char *dot_argv[] = {
             "dot",
             "-Tsvg",
             output_filepath,
@@ -295,21 +253,6 @@ int main(int argc, char **argv)
 
         echo_cmd(dot_argv);
         cmd(dot_argv);
-    } else if (strcmp(subcommand, "complete") == 0) {
-        if (*argv == NULL) {
-            usage(stderr, program);
-            fprintf(stderr, "ERROR: no prefix is provided\n");
-            exit(1);
-        }
-
-        const char *prefix = *argv++;
-        Node *subtree = find_prefix(root, prefix);
-        if (subtree) {
-            print_autocompletion(stdout, subtree);
-        } else {
-            fprintf(stderr, "No autocomplete suggestions found\n");
-            exit(1);
-        }
     } else {
         usage(stderr, program);
         fprintf(stderr, "ERROR: unknown subcommand `%s`\n", subcommand);
